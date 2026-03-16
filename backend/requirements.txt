@@ -1,6 +1,6 @@
 django>=4.2,<5.0
 djangorestframework>=3.14
 django-cors-headers>=4.3
-anthropic>=0.25
+openai>=1.30.0
 numpy>=1.26
 python-dotenv>=1.0

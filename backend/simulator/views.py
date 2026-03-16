@@ -11,7 +11,7 @@ Endpoints:
 
 import json
 import logging
-import anthropic
+from openai import OpenAI
 from django.conf import settings
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -213,7 +213,86 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside the J
             logger.warning(f"Could not save prediction to DB: {e}")
 
         return Response(ai_result)
+class ChatView(APIView):
+    """
+    POST /api/chat/
+    {
+        "message": "Why is dougong more earthquake-resistant?",
+        "context": {
+            "magnitude": 6.5,
+            "frequency": 1.2,
+            "damping": 0.3,
+            "structure_type": "dougong"
+        }
+    }
+    """
 
+    def post(self, request):
+        message = request.data.get("message", "").strip()
+        context = request.data.get("context", {})
+
+        if not message:
+            return Response(
+                {"error": "Message is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        api_key = getattr(settings, "DEEPSEEK_API_KEY", "")
+        base_url = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+        if not api_key:
+            return Response(
+                {"error": "DEEPSEEK_API_KEY not configured"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        system_prompt = f"""
+You are '明代工程导师' — a Ming-dynasty master engineer and educational guide for the Gugong AI Ancient Engineering Simulation System.
+
+Your role:
+- Explain ancient Chinese palace engineering in simple but accurate terms.
+- Help users understand why structures like dougong behave differently under earthquakes.
+- Relate answers to the current simulation context when provided.
+- Be educational, clear, and concise.
+- If the user asks about engineering, materials, palace design, earthquake resistance, or historical construction logic, answer as a knowledgeable mentor.
+- Do not invent exact historical facts when uncertain. State uncertainty clearly.
+- Keep answers practical and understandable for students.
+
+Current simulation context:
+- Magnitude: {context.get("magnitude", "unknown")}
+- Frequency: {context.get("frequency", "unknown")}
+- Damping: {context.get("damping", "unknown")}
+- Structure Type: {context.get("structure_type", "unknown")}
+"""
+
+        try:
+            client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
+            )
+
+            completion = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {"role": "system", "content": system_prompt.strip()},
+                    {"role": "user", "content": message},
+                ],
+                temperature=0.7,
+                max_tokens=700,
+            )
+
+            reply = completion.choices[0].message.content.strip()
+
+            return Response({
+                "reply": reply
+            })
+
+        except Exception as e:
+            logger.error(f"DeepSeek chat error: {e}")
+            return Response(
+                {"error": "Chat request failed", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class SimulationHistoryView(APIView):
     """
