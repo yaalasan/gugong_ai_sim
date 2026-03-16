@@ -26,7 +26,78 @@ style.textContent = `
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;background:var(--ink);}
+/* ── Ming Mentor Chat ── */
+.chat-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-height:420px;
+}
+.chat-scroll{
+  flex:1;
+  min-height:260px;
+  max-height:420px;
+  overflow-y:auto;
+  padding:10px;
+  background:rgba(0,0,0,0.28);
+  border:1px solid rgba(200,150,12,0.12);
+  border-radius:4px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.chat-scroll::-webkit-scrollbar{width:3px;}
+.chat-scroll::-webkit-scrollbar-thumb{background:rgba(200,150,12,0.3);border-radius:2px;}
 
+.chat-msg{
+  padding:10px 12px;
+  border-radius:4px;
+  line-height:1.55;
+  white-space:pre-wrap;
+  font-size:11px;
+}
+.chat-msg.user{
+  background:rgba(139,0,0,0.22);
+  border:1px solid rgba(204,51,51,0.25);
+  color:var(--paper);
+}
+.chat-msg.assistant{
+  background:rgba(200,150,12,0.08);
+  border:1px solid rgba(200,150,12,0.18);
+  color:var(--paper);
+}
+.chat-role{
+  font-size:9px;
+  letter-spacing:0.12em;
+  color:var(--gold);
+  opacity:0.7;
+  margin-bottom:5px;
+}
+.chat-input{
+  width:100%;
+  min-height:84px;
+  resize:vertical;
+  background:rgba(10,5,0,0.8);
+  border:1px solid rgba(200,150,12,0.25);
+  border-radius:4px;
+  padding:10px 12px;
+  color:var(--paper);
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;
+  outline:none;
+}
+.chat-input:focus{
+  border-color:rgba(200,150,12,0.65);
+}
+.chat-actions{
+  display:flex;
+  gap:8px;
+}
+.chat-hint{
+  font-size:8px;
+  color:rgba(200,150,12,0.35);
+  line-height:1.5;
+}
 /* ── Root layout ── */
 .root {
   font-family:'Share Tech Mono',monospace;
@@ -589,6 +660,7 @@ function DougongStructure({ disp }) {
 }
 
 // ─── ML Predictor ─────────────────────────────────────────────────────────────
+// ─── ML Predictor ─────────────────────────────────────────────────────────────
 function MLPredictor() {
   const [form, setForm] = useState({
     buildingType: "木结构 Timber Frame",
@@ -599,58 +671,68 @@ function MLPredictor() {
     location: "",
     magnitude: "",
   });
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
   const predict = async () => {
-    setLoading(true); setResult(null);
+    setLoading(true);
+    setResult(null);
+
     try {
       const res = await fetch("http://localhost:8000/api/predict/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          building_type:    form.buildingType,
-          height:           parseFloat(form.height),
-          wall_thickness:   parseFloat(form.wallThickness),
+          building_type: form.buildingType,
+          height: parseFloat(form.height),
+          wall_thickness: parseFloat(form.wallThickness),
           foundation_depth: parseFloat(form.foundationDepth),
-          age:              parseInt(form.age),
-          location:         form.location,
-          magnitude:        parseFloat(form.magnitude),
-        })
+          age: parseInt(form.age),
+          location: form.location,
+          magnitude: parseFloat(form.magnitude),
+        }),
       });
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Server error");
       setResult(data);
-    } catch(e) {
-      setResult({ error: `Analysis failed: ${e.message}` });
+    } catch (e) {
+      setResult({
+        error: `Analysis failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+      });
     }
+
     setLoading(false);
   };
 
-  const scoreColor = s =>
+  const scoreColor = (s: number) =>
     s >= 70 ? "#4ade80" : s >= 40 ? "#facc15" : "#f87171";
 
   const filled = Object.values(form).every(v => v.trim() !== "");
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       <div className="section-title">🏛 AI 结构预测 · ML Predictor</div>
 
       {[
         ["buildingType", "Building Type", "e.g. 木结构 Timber, 砖石 Masonry"],
-        ["height",        "Height (m)",         "e.g. 35"],
+        ["height", "Height (m)", "e.g. 35"],
         ["wallThickness", "Wall Thickness (cm)", "e.g. 80"],
-        ["foundationDepth","Foundation Depth (m)","e.g. 3.5"],
-        ["age",           "Age of Structure (yrs)","e.g. 600"],
-        ["location",      "Region / Province",   "e.g. Beijing, Shaanxi"],
-        ["magnitude",     "Design Earthquake Mw","e.g. 7.5"],
+        ["foundationDepth", "Foundation Depth (m)", "e.g. 3.5"],
+        ["age", "Age of Structure (yrs)", "e.g. 600"],
+        ["location", "Region / Province", "e.g. Beijing, Shaanxi"],
+        ["magnitude", "Design Earthquake Mw", "e.g. 7.5"],
       ].map(([key, label, ph]) => (
         <div className="ml-input-row" key={key}>
           <div className="ml-input-label">{label}</div>
           {key === "buildingType" ? (
-            <select className="sim-select" value={form[key]} onChange={e => set(key, e.target.value)}>
+            <select
+              className="sim-select"
+              value={form[key as keyof typeof form]}
+              onChange={e => set(key, e.target.value)}
+            >
               <option>木结构 Timber Frame</option>
               <option>斗拱 Dougong Bracket</option>
               <option>砖石 Masonry</option>
@@ -658,14 +740,21 @@ function MLPredictor() {
               <option>混合 Composite</option>
             </select>
           ) : (
-            <input className="ml-input" placeholder={ph}
-              value={form[key]} onChange={e => set(key, e.target.value)} />
+            <input
+              className="ml-input"
+              placeholder={ph}
+              value={form[key as keyof typeof form]}
+              onChange={e => set(key, e.target.value)}
+            />
           )}
         </div>
       ))}
 
-      <button className="btn-predict" onClick={predict}
-        disabled={loading || !filled}>
+      <button
+        className="btn-predict"
+        onClick={predict}
+        disabled={loading || !filled}
+      >
         {loading ? "占卜中… ANALYSING…" : "⚡ 预测抗震性 · PREDICT RESISTANCE"}
       </button>
 
@@ -676,34 +765,48 @@ function MLPredictor() {
       )}
 
       {result && !result.error && (
-        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div className="ml-result">
-            <div style={{ color:"#E8B84B", fontFamily:"'Noto Serif SC',serif", fontSize:11, marginBottom:6 }}>
+            <div
+              style={{
+                color: "#E8B84B",
+                fontFamily: "'Noto Serif SC',serif",
+                fontSize: 11,
+                marginBottom: 6,
+              }}
+            >
               {result.riskLevel} RISK
             </div>
-            <div style={{ marginBottom:8 }}>{result.summary}</div>
-            <div style={{ marginBottom:4 }}>
-              <span style={{ color:"rgba(200,150,12,0.6)" }}>STRENGTHS: </span>
+            <div style={{ marginBottom: 8 }}>{result.summary}</div>
+            <div style={{ marginBottom: 4 }}>
+              <span style={{ color: "rgba(200,150,12,0.6)" }}>STRENGTHS: </span>
               {result.keyStrengths?.join(" · ")}
             </div>
-            <div style={{ marginBottom:8 }}>
-              <span style={{ color:"rgba(200,150,12,0.6)" }}>RISKS: </span>
+            <div style={{ marginBottom: 8 }}>
+              <span style={{ color: "rgba(200,150,12,0.6)" }}>RISKS: </span>
               {result.keyVulnerabilities?.join(" · ")}
             </div>
-            <div style={{ color:"rgba(200,150,12,0.5)", fontSize:9 }}>
+            <div style={{ color: "rgba(200,150,12,0.5)", fontSize: 9 }}>
               ▶ {result.recommendation}
             </div>
           </div>
+
           <div className="ml-score-row">
             <span className="ml-score-label">RESISTANCE</span>
             <div className="ml-score-bar-bg">
-              <div className="ml-score-bar-fill" style={{
-                width:`${result.resistanceScore}%`,
-                background:`linear-gradient(90deg, rgba(200,150,12,0.5), ${scoreColor(result.resistanceScore)})`,
-                boxShadow:`0 0 8px ${scoreColor(result.resistanceScore)}`,
-              }} />
+              <div
+                className="ml-score-bar-fill"
+                style={{
+                  width: `${result.resistanceScore}%`,
+                  background: `linear-gradient(90deg, rgba(200,150,12,0.5), ${scoreColor(result.resistanceScore)})`,
+                  boxShadow: `0 0 8px ${scoreColor(result.resistanceScore)}`,
+                }}
+              />
             </div>
-            <span className="ml-score-val" style={{ color:scoreColor(result.resistanceScore) }}>
+            <span
+              className="ml-score-val"
+              style={{ color: scoreColor(result.resistanceScore) }}
+            >
               {result.resistanceScore}
             </span>
           </div>
@@ -711,8 +814,156 @@ function MLPredictor() {
       )}
 
       {result?.error && (
-        <div className="ml-result" style={{ color:"#f87171" }}>{result.error}</div>
+        <div className="ml-result" style={{ color: "#f87171" }}>
+          {result.error}
+        </div>
       )}
+    </div>
+  );
+}
+
+// ─── Ming Mentor Chat ─────────────────────────────────────────────────────────
+function MingMentorChat({
+  magnitude,
+  frequency,
+  damping,
+  structure,
+}: {
+  magnitude: number;
+  frequency: number;
+  damping: number;
+  structure: string;
+}) {
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "我是明代工程导师。Ask me about dougong, masonry, earthquake behavior, or how the current simulation parameters affect the structure.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const userMessage = { role: "user", content: text };
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/chat/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: text,
+          context: {
+            magnitude,
+            frequency,
+            damping,
+            structure_type: structure,
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Chat request failed");
+      }
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.reply || "No reply returned.",
+        },
+      ]);
+    } catch (err) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Chat error: ${err instanceof Error ? err.message : "Unknown error"}`,
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div className="chat-wrap">
+      <div className="section-title">明代导师 · Ming Mentor Chat</div>
+
+      <div className="chat-scroll">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`chat-msg ${msg.role}`}>
+            <div className="chat-role">
+              {msg.role === "user" ? "YOU" : "MING MENTOR"}
+            </div>
+            <div>{msg.content}</div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="chat-msg assistant">
+            <div className="chat-role">MING MENTOR</div>
+            <div>Thinking...</div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      <textarea
+        className="chat-input"
+        placeholder="Ask about the current structure, the earthquake parameters, or ancient engineering logic..."
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+      />
+
+      <div className="chat-actions">
+        <button className="btn btn-start" onClick={sendMessage} disabled={loading}>
+          {loading ? "THINKING..." : "ASK MENTOR"}
+        </button>
+        <button
+          className="btn btn-reset"
+          onClick={() =>
+            setMessages([
+              {
+                role: "assistant",
+                content:
+                  "我是明代工程导师。Ask me about dougong, masonry, earthquake behavior, or how the current simulation parameters affect the structure.",
+              },
+            ])
+          }
+          disabled={loading}
+        >
+          CLEAR
+        </button>
+      </div>
+
+      <div className="chat-hint">
+        Current context is sent automatically: magnitude, frequency, damping, and selected structure.
+      </div>
     </div>
   );
 }
@@ -917,13 +1168,24 @@ export default function App() {
 
       {/* ── Right ML Panel ── */}
       <aside className="panel panel-right">
-        <div className="section">
-          <MLPredictor />
-        </div>
-        <div style={{ fontSize:8, color:"rgba(200,150,12,0.2)", textAlign:"center", letterSpacing:"0.1em", marginTop:"auto", padding:"8px 0" }}>
-          古代中国建筑与技术研究 · Ancient Chinese Architecture & Technology
-        </div>
-      </aside>
+  <div className="section">
+    <MLPredictor />
+
+  </div>
+
+  <div className="section">
+    <MingMentorChat
+      magnitude={magnitude}
+      frequency={frequency}
+      damping={damping}
+      structure={structure}
+    />
+  </div>
+
+  <div style={{ fontSize:8, color:"rgba(200,150,12,0.2)", textAlign:"center", letterSpacing:"0.1em", marginTop:"auto", padding:"8px 0" }}>
+    古代中国建筑与技术研究 · Ancient Chinese Architecture & Technology
+  </div>
+</aside>
     </div>
   );
 }
