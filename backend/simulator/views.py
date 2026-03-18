@@ -141,11 +141,6 @@ class PredictView(APIView):
 
         data = serializer.validated_data
 
-        if not settings.ANTHROPIC_API_KEY:
-            return Response(
-                {"error": "ANTHROPIC_API_KEY not configured"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
 
         prompt = f"""You are an expert structural engineer specialising in ancient Chinese imperial architecture and seismic resilience.
 
@@ -170,16 +165,54 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside the J
 }}"""
 
         try:
-            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
-            message = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}]
+            api_key = getattr(settings, "DEEPSEEK_API_KEY", "")
+            base_url = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
+            if not api_key:
+                return Response(
+                    {"error": "DEEPSEEK_API_KEY not configured"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            client = OpenAI(
+                api_key=api_key,
+                base_url=base_url,
             )
-            text = message.content[0].text
-            # Strip any accidental markdown
+
+            completion = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a structural engineering expert. Always respond with valid JSON only."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=0.3,  # lower = more consistent JSON
+                max_tokens=1000,
+            )
+
+            text = completion.choices[0].message.content
+
+            # Clean response
             clean = text.strip().replace("```json", "").replace("```", "").strip()
             ai_result = json.loads(clean)
+
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parse error: {e} — raw: {text}")
+            return Response(
+                {"error": "AI returned malformed response", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            logger.error(f"DeepSeek API error: {e}")
+            return Response(
+                {"error": "AI prediction failed", "detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
         except json.JSONDecodeError as e:
             logger.error(f"JSON parse error: {e} — raw: {text}")
