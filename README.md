@@ -19,7 +19,7 @@ gugong_ai_sim/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/gugong_ai_sim.git
+git clone https://github.com/yaalasan/gugong_ai_sim.git
 cd gugong_ai_sim
 ```
 
@@ -27,7 +27,7 @@ cd gugong_ai_sim
 ```bash
 cd backend
 pip install -r requirements.txt
-cp .env.example .env        # add your ANTHROPIC_API_KEY
+cp .env.example .env       
 python manage.py migrate
 python manage.py runserver
 ```
@@ -76,8 +76,6 @@ npm run dev
 ## Environment Variables
 
 ```
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-DJANGO_SECRET_KEY=your-secret-key-here   # optional, has default for dev
 ```
 
 ---
