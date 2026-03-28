@@ -72,8 +72,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-# Anthropic API key
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+# DeepSeek API
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
 # Django REST Framework
 REST_FRAMEWORK = {
